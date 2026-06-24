@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historia - Grand Strategy</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">HISTORIA</div>
+    <div class="header-right">
+      <span id="headerUser" class="header-user" style="display:none"></span>
+      <button id="btnLogin" class="btn btn-primary btn-sm">Connexion</button>
+      <button id="btnLogout" class="btn btn-danger btn-sm" style="display:none">Deconnexion</button>
+    </div>
+  </div>
+
+  <!-- Screen: Lobby -->
+  <div id="screenLobby" class="screen active">
+    <div class="lobby">
+      <div class="lobby-section">
+        <div class="lobby-section-header">
+          <h2>Scenarios</h2>
+          <button id="btnCreateScenario" class="btn btn-secondary btn-sm">+ Creer un scenario</button>
+        </div>
+        <div id="scenarioGrid" class="scenario-grid"></div>
+      </div>
+
+      <div class="lobby-section">
+        <h2>Parties sauvegardees</h2>
+        <div id="savedGamesList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen: Scenario Detail -->
+  <div id="screenScenarioDetail" class="screen">
+    <div class="detail">
+      <button id="btnBackFromDetail" class="btn btn-secondary btn-sm" style="margin-bottom:16px">← Retour</button>
+      <h2 id="detailName"></h2>
+      <div class="detail-meta">
+        <span id="detailEpoch"></span> &middot; <span id="detailRegion"></span>
+      </div>
+      <p id="detailDescription" class="detail-desc"></p>
+
+      <h3 style="color:var(--gold);margin-bottom:12px">Choisissez votre pays</h3>
+      <div id="detailCountries" class="country-grid"></div>
+
+      <button id="btnLaunchGame" class="btn btn-primary" disabled>Lancer la partie</button>
+    </div>
+  </div>
+
+  <!-- Screen: Game -->
+  <div id="screenGame" class="screen">
+    <div class="game-layout">
+      <!-- Game top bar -->
+      <div class="game-topbar">
+        <span class="country-name" id="gameCountry">-</span>
+        <span class="game-date" id="gameDate">-</span>
+        <span class="game-epoch-label" id="gameEpoch">-</span>
+        <div class="game-topbar-right">
+          <button id="btnToggleDecision" class="btn-icon" title="Chat Decisions">&#9881;</button>
+          <button id="btnSave" class="btn btn-secondary btn-sm">Sauvegarder</button>
+          <button id="btnBackLobby" class="btn btn-secondary btn-sm">Quitter</button>
+        </div>
+      </div>
+
+      <!-- Game main area -->
+      <div class="game-main">
+        <!-- Map center -->
+        <div class="map-container">
+          <svg id="gameMap" class="game-map" viewBox="0 0 1000 600"></svg>
+          <!-- Country tooltip on hover -->
+          <div id="countryTooltip" class="country-tooltip" style="display:none"></div>
+        </div>
+
+        <!-- Player stats overlay (bottom-left) -->
+        <div id="playerStats" class="player-stats-overlay">
+          <div class="ps-header" id="psCountryName">-</div>
+          <div class="ps-stats">
+            <div class="ps-stat" id="statEconomy"><span class="ps-icon">💰</span><span class="stat-value">50</span><div class="ps-bar"><div class="stat-bar-fill eco"></div></div></div>
+            <div class="ps-stat" id="statMilitary"><span class="ps-icon">⚔️</span><span class="stat-value">50</span><div class="ps-bar"><div class="stat-bar-fill mil"></div></div></div>
+            <div class="ps-stat" id="statPopulation"><span class="ps-icon">👥</span><span class="stat-value">50</span><div class="ps-bar"><div class="stat-bar-fill pop"></div></div></div>
+            <div class="ps-stat" id="statDiplomacy"><span class="ps-icon">🤝</span><span class="stat-value">50</span><div class="ps-bar"><div class="stat-bar-fill dip"></div></div></div>
+          </div>
+          <div class="ps-modifiers" id="gameModifiers"><span class="no-modifiers">Aucun modificateur</span></div>
+        </div>
+
+        <!-- Country info panel (right, shown on country click) -->
+        <div id="panelCountryInfo" class="panel-country-info" style="display:none">
+          <div class="chat-header">
+            <span id="countryInfoName">-</span>
+            <button class="btn-icon" onclick="GameMap.closeCountryPanel()">✕</button>
+          </div>
+          <div id="countryInfoContent" class="country-info-content"></div>
+          <div class="country-info-chat">
+            <div id="chatInfoMessages" class="chat-messages"></div>
+            <div class="chat-input">
+              <textarea id="inputInfo" placeholder="Question sur ce pays..."></textarea>
+              <button id="btnSendInfo" class="btn btn-primary btn-sm">Envoyer</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Decision overlay (top-left) -->
+        <div id="panelDecision" class="panel-decision">
+          <div class="chat-header">
+            Conseiller Strategique
+          </div>
+          <div id="chatDecisionMessages" class="chat-messages"></div>
+          <div id="pendingActionsList" class="pending-actions-section"></div>
+          <div id="decisionChatInput" class="chat-input">
+            <textarea id="inputDecision" placeholder="Decrivez votre action ou strategie..."></textarea>
+            <button id="btnQueueAction" class="btn-queue" title="Ajouter a la file d'actions">+ File</button>
+            <button id="btnSendDecision" class="btn btn-primary btn-sm">Envoyer</button>
+          </div>
+          <button id="btnBackToChat" class="btn btn-secondary btn-sm">← Retour au chat</button>
+        </div>
+
+        <!-- Event log overlay (bottom-right) -->
+        <div id="eventLogOverlay" class="event-log-overlay">
+          <div class="elo-header" onclick="document.getElementById('eventLogOverlay').classList.toggle('collapsed')">
+            Journal <span id="eventLogCount">0</span>
+          </div>
+          <div id="eventLogList" class="event-log-list"></div>
+        </div>
+      </div>
+
+      <!-- Time control bar -->
+      <div class="time-bar">
+        <span class="time-bar-label">Avancer le temps :</span>
+        <button class="btn-advance" data-duration="1 mois">+1 mois</button>
+        <button class="btn-advance" data-duration="6 mois">+6 mois</button>
+        <button class="btn-advance" data-duration="1 an">+1 an</button>
+        <button class="btn-advance" data-duration="5 ans">+5 ans</button>
+        <span id="actionCount" class="action-count-badge">0</span>
+        <div id="advanceSpinner" class="advance-spinner">
+          <div class="spinner"></div>
+          <span>L'histoire s'ecrit...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen: Custom Scenario -->
+  <div id="screenCustom" class="screen">
+    <div class="custom-form">
+      <button id="btnBackFromCustom" class="btn btn-secondary btn-sm" style="margin-bottom:16px">← Retour</button>
+      <h2>Creer un scenario</h2>
+
+      <div class="form-group">
+        <label>Nom du scenario *</label>
+        <input type="text" id="customName" placeholder="Ex: La Chute de Constantinople">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="customDescription" placeholder="Contexte historique du scenario..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Epoque</label>
+        <input type="text" id="customEpoch" placeholder="Ex: Moyen-Age, Renaissance...">
+      </div>
+      <div class="form-group">
+        <label>Date de debut</label>
+        <input type="text" id="customStartDate" placeholder="Ex: 1453-04-06">
+      </div>
+      <div class="form-group">
+        <label>Region</label>
+        <input type="text" id="customRegion" placeholder="Ex: Europe, Asie, Monde...">
+      </div>
+      <div class="form-group">
+        <label>Pays (JSON ou format simplifie) *</label>
+        <textarea id="customCountries" rows="8" placeholder='Format simple (un par ligne):
+Nom,economie,militaire,population,diplomatie,description
+Ex:
+France,60,70,65,55,Royaume puissant
+Angleterre,75,80,50,60,Puissance maritime
+
+Ou JSON: [{"name":"France","economy":60,...}]'></textarea>
+        <div class="form-hint">Format simple : nom,eco,mil,pop,diplo,description (un pays par ligne)</div>
+      </div>
+
+      <button id="btnSubmitCustom" class="btn btn-primary">Creer le scenario</button>
+    </div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div id="authModal" class="modal-overlay">
+    <div class="modal">
+      <button class="modal-close" onclick="document.getElementById('authModal').classList.remove('active')">&times;</button>
+      <h2 class="auth-title">Bienvenue, Stratege</h2>
+      <div class="tab-bar">
+        <button class="active" onclick="switchAuthTab('login',this)">Connexion</button>
+        <button onclick="switchAuthTab('register',this)">Inscription</button>
+      </div>
+      <div id="auth-login">
+        <div class="form-group">
+          <label>Pseudo</label>
+          <input type="text" id="login-user" placeholder="Ton pseudo">
+        </div>
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <input type="password" id="login-pass" placeholder="Mot de passe">
+        </div>
+        <button class="btn btn-gold btn-block" id="btnDoLogin">Connexion</button>
+        <div class="form-msg" id="login-msg"></div>
+      </div>
+      <div id="auth-register" style="display:none;">
+        <div class="form-group">
+          <label>Pseudo</label>
+          <input type="text" id="reg-user" placeholder="Choisis un pseudo">
+        </div>
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <input type="password" id="reg-pass" placeholder="4 caracteres minimum">
+        </div>
+        <button class="btn btn-pink btn-block" id="btnDoRegister">Inscription</button>
+        <div class="form-msg" id="reg-msg"></div>
+      </div>
+      <div class="auth-links">
+        <a href="https://code.pamplemouche.com" target="_blank">Mot de passe oublie ?</a>
+        <a href="https://oasis.pamplemouche.com" target="_blank">Oasis Pamplemouche</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/ui.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/chat-info.js"></script>
+  <script src="js/chat-decision.js"></script>
+  <script src="js/scenarios.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+
+</body>
+</html>
