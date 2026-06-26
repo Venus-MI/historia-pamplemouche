@@ -8,16 +8,24 @@
   function clearToken() { localStorage.removeItem('historia_token'); }
   function loadToken() { return localStorage.getItem('historia_token'); }
 
-  // Check token from URL hash first, then localStorage
-  const hash = window.location.hash;
-  const hashMatch = hash.match(/token=([^&]+)/);
-  if (hashMatch) {
-    token = hashMatch[1];
-    saveToken(token);
-    window.location.hash = '';
+  // Resolve identity via centralized Pamplemouche auth
+  // (reads #token hash -> .pamplemouche.com cookie -> legacy localStorage)
+  let pampUser = null;
+  try { pampUser = await PampAuth.init(); } catch (e) {}
+  if (pampUser) {
+    token = PampAuth.getToken();
   } else {
-    token = loadToken();
+    // Legacy fallback: URL hash then local storage
+    const hash = window.location.hash;
+    const hashMatch = hash.match(/token=([^&]+)/);
+    if (hashMatch) {
+      token = hashMatch[1];
+      window.location.hash = '';
+    } else {
+      token = loadToken();
+    }
   }
+  if (token) saveToken(token);
 
   // Init modules
   ChatInfo.init();
@@ -125,8 +133,8 @@
 
   // === AUTH MODAL ===
   UI.$('btnLogin').onclick = () => {
-    UI.$('authModal').classList.add('active');
-    UI.$('login-user').focus();
+    // Centralized login owns sign-in / registration now
+    PampAuth.redirectToLogin();
   };
 
   // Tab switching
@@ -145,40 +153,8 @@
   UI.$('login-user').onkeydown = (e) => { if (e.key === 'Enter') UI.$('login-pass').focus(); };
 
   async function doLogin() {
-    const user = UI.$('login-user').value.trim();
-    const pass = UI.$('login-pass').value;
-    const msg = UI.$('login-msg');
-    if (!user || !pass) { msg.textContent = 'Remplis tous les champs'; msg.className = 'form-msg error'; return; }
-
-    UI.$('btnDoLogin').disabled = true;
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user, password: pass })
-      });
-      const data = await res.json();
-      if (data.ok) {
-        token = data.token;
-        username = data.username;
-        HistoriaAPI.setToken(token);
-        saveToken(token);
-        updateAuthUI();
-        UI.$('authModal').classList.remove('active');
-        UI.$('login-user').value = '';
-        UI.$('login-pass').value = '';
-        msg.textContent = '';
-        await loadSavedGames();
-        UI.toast('Connecte en tant que ' + username, 'success');
-      } else {
-        msg.textContent = data.error || 'Identifiants invalides';
-        msg.className = 'form-msg error';
-      }
-    } catch (e) {
-      msg.textContent = 'Erreur reseau';
-      msg.className = 'form-msg error';
-    }
-    UI.$('btnDoLogin').disabled = false;
+    // Sign-in is handled by the centralized Pamplemouche login page
+    PampAuth.redirectToLogin();
   }
 
   // Register
@@ -186,42 +162,8 @@
   UI.$('reg-pass').onkeydown = (e) => { if (e.key === 'Enter') doRegister(); };
 
   async function doRegister() {
-    const user = UI.$('reg-user').value.trim();
-    const pass = UI.$('reg-pass').value;
-    const msg = UI.$('reg-msg');
-    if (!user || !pass) { msg.textContent = 'Remplis tous les champs'; msg.className = 'form-msg error'; return; }
-    if (user.length < 2 || user.length > 16) { msg.textContent = 'Pseudo: 2-16 caracteres'; msg.className = 'form-msg error'; return; }
-    if (pass.length < 4) { msg.textContent = 'Mot de passe: 4+ caracteres'; msg.className = 'form-msg error'; return; }
-
-    UI.$('btnDoRegister').disabled = true;
-    try {
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user, password: pass })
-      });
-      const data = await res.json();
-      if (data.ok) {
-        token = data.token;
-        username = data.username;
-        HistoriaAPI.setToken(token);
-        saveToken(token);
-        updateAuthUI();
-        UI.$('authModal').classList.remove('active');
-        UI.$('reg-user').value = '';
-        UI.$('reg-pass').value = '';
-        msg.textContent = '';
-        await loadSavedGames();
-        UI.toast('Bienvenue ' + username + ' !', 'success');
-      } else {
-        msg.textContent = data.error || 'Erreur d\'inscription';
-        msg.className = 'form-msg error';
-      }
-    } catch (e) {
-      msg.textContent = 'Erreur reseau';
-      msg.className = 'form-msg error';
-    }
-    UI.$('btnDoRegister').disabled = false;
+    // Registration is handled by the centralized Pamplemouche login page
+    PampAuth.redirectToLogin();
   }
 
   // Logout
@@ -230,10 +172,8 @@
     username = null;
     HistoriaAPI.setToken(null);
     clearToken();
-    showLoggedOut();
-    loadSavedGames();
-    UI.showScreen('screenLobby');
-    UI.toast('Deconnecte', 'info');
+    // Revoke the centralized session + clear legacy keys, then go to login
+    PampAuth.logout();
   };
 
   // Close modal on background click
